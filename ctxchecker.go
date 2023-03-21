@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"strconv"
 
+	"github.com/gostaticanalysis/analysisutil"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
@@ -24,12 +25,22 @@ var Analyzer = &analysis.Analyzer{
 func run(pass *analysis.Pass) (any, error) {
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 	_ = getCommentMap(pass)
+	pkgs := pass.Pkg.Imports()
+	obj := analysisutil.LookupFromImports(pkgs, "context", "Context")
+	types := pass.TypesInfo
 
 	inspect.Preorder(nil, func(n ast.Node) {
 		switch n := n.(type) {
-		case *ast.Ident:
-			if n.Name == "gopher" {
-				pass.Reportf(n.Pos(), "identifier is gopher")
+		case *ast.FieldList:
+			for _, v := range n.List {
+				value, ok := v.Type.(*ast.SelectorExpr)
+				if !ok {
+					return
+				}
+				if types.ObjectOf(value.Sel) == obj {
+					pass.Reportf(n.Pos(), "CallExpr is here")
+				}
+
 			}
 		}
 	})
@@ -48,6 +59,5 @@ func getCommentMap(pass *analysis.Pass) map[string]string {
 			}
 		}
 	}
-
 	return mp
 }
