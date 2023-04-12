@@ -38,7 +38,7 @@ func run(pass *analysis.Pass) (any, error) {
 					return
 				}
 				if types.ObjectOf(value.Sel) == obj {
-					pass.Reportf(n.Pos(), "CallExpr is here")
+					pass.Reportf(n.Pos(), "ctx is here")
 				}
 
 			}
