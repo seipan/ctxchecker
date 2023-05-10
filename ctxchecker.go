@@ -48,6 +48,33 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
+func ctxCheck(pass *analysis.Pass, field *ast.FieldList) bool {
+	// var flag bool
+	// for _, v := range field.List {
+
+	// }
+	return true
+}
+
+func checkHandler(pass *analysis.Pass, field *ast.FieldList) bool {
+	pkgs := pass.Pkg.Imports()
+	httpObj := analysisutil.LookupFromImports(pkgs, "http", "Request")
+	ginObj := analysisutil.LookupFromImports(pkgs, "gin", "Context")
+	echoObj := analysisutil.LookupFromImports(pkgs, "http", "Context")
+	types := pass.TypesInfo
+	for _, v := range field.List {
+		value, ok := v.Type.(*ast.SelectorExpr)
+		if !ok {
+			continue
+		}
+		if types.ObjectOf(value.Sel) == httpObj || types.ObjectOf(value.Sel) == ginObj || types.ObjectOf(value.Sel) == echoObj {
+			return true
+		}
+	}
+
+	return false
+}
+
 func getCommentMap(pass *analysis.Pass) map[string]string {
 	var mp = make(map[string]string)
 
