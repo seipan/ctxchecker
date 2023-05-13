@@ -75,6 +75,23 @@ func checkHandler(pass *analysis.Pass, field *ast.FieldList) bool {
 	return false
 }
 
+func checkTest(pass *analysis.Pass, field *ast.FieldList) bool {
+	pkgs := pass.Pkg.Imports()
+	Obj := analysisutil.LookupFromImports(pkgs, "testing", "T")
+	types := pass.TypesInfo
+	for _, v := range field.List {
+		value, ok := v.Type.(*ast.SelectorExpr)
+		if !ok {
+			continue
+		}
+		if types.ObjectOf(value.Sel) == Obj {
+			return true
+		}
+	}
+
+	return false
+}
+
 func getCommentMap(pass *analysis.Pass) map[string]string {
 	var mp = make(map[string]string)
 
