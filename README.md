@@ -31,7 +31,6 @@ func Test_f3(t *testing.T) {
 result:
 ```
 analysistest.go:454: a/a.go:13:8: unexpected diagnostic: no ctx
-analysistest.go:454: a/a.go:17:8: unexpected diagnostic: no ctx
 ```
 
 ## Install
