@@ -2,6 +2,7 @@ package ctxchecker
 
 import (
 	"go/ast"
+	"reflect"
 	"strconv"
 
 	"github.com/gostaticanalysis/analysisutil"
@@ -29,7 +30,7 @@ func run(pass *analysis.Pass) (any, error) {
 	inspect.Preorder(nil, func(n ast.Node) {
 		switch n := n.(type) {
 		case *ast.FieldList:
-			if !checkHandler(pass, n) && !checkTest(pass, n) && !ctxCheck(pass, n) {
+			if !checkHandlerNoPoint(pass, n) && !checkTest(pass, n) && !ctxCheck(pass, n) && !checkHandler(pass, n) {
 				pass.Reportf(n.Pos(), "no ctx")
 			}
 
@@ -49,17 +50,38 @@ func ctxCheck(pass *analysis.Pass, field *ast.FieldList) bool {
 		if !ok {
 			continue
 		}
-		if types.ObjectOf(value.Sel) == Obj {
+		if reflect.DeepEqual(types.ObjectOf(value.Sel), Obj) {
 			flag = true
 		}
 	}
 	return flag
 }
 
+func checkHandlerNoPoint(pass *analysis.Pass, field *ast.FieldList) bool {
+	pkgs := pass.Pkg.Imports()
+	httpObj := analysisutil.LookupFromImports(pkgs, "net/http", "Request")
+	ginObj := analysisutil.LookupFromImports(pkgs, "gin", "Context")
+	types := pass.TypesInfo
+	for _, v := range field.List {
+		svalue, ok := v.Type.(*ast.StarExpr)
+		if !ok {
+			continue
+		}
+		value, ok := svalue.X.(*ast.SelectorExpr)
+		if !ok {
+			continue
+		}
+		if types.ObjectOf(value.Sel) == httpObj || types.ObjectOf(value.Sel) == ginObj {
+			return true
+		}
+	}
+
+	return false
+}
+
 func checkHandler(pass *analysis.Pass, field *ast.FieldList) bool {
 	pkgs := pass.Pkg.Imports()
-	httpObj := analysisutil.LookupFromImports(pkgs, "http", "Request")
-	ginObj := analysisutil.LookupFromImports(pkgs, "gin", "Context")
+	httpObj := analysisutil.LookupFromImports(pkgs, "net/http", "ResponseWriter")
 	echoObj := analysisutil.LookupFromImports(pkgs, "echo", "Context")
 	types := pass.TypesInfo
 	for _, v := range field.List {
@@ -67,7 +89,7 @@ func checkHandler(pass *analysis.Pass, field *ast.FieldList) bool {
 		if !ok {
 			continue
 		}
-		if types.ObjectOf(value.Sel) == httpObj || types.ObjectOf(value.Sel) == ginObj || types.ObjectOf(value.Sel) == echoObj {
+		if types.ObjectOf(value.Sel) == httpObj || types.ObjectOf(value.Sel) == echoObj {
 			return true
 		}
 	}
@@ -76,20 +98,24 @@ func checkHandler(pass *analysis.Pass, field *ast.FieldList) bool {
 }
 
 func checkTest(pass *analysis.Pass, field *ast.FieldList) bool {
+	flag := false
 	pkgs := pass.Pkg.Imports()
 	Obj := analysisutil.LookupFromImports(pkgs, "testing", "T")
 	types := pass.TypesInfo
 	for _, v := range field.List {
-		value, ok := v.Type.(*ast.SelectorExpr)
+		value, ok := v.Type.(*ast.StarExpr)
 		if !ok {
 			continue
 		}
-		if types.ObjectOf(value.Sel) == Obj {
-			return true
+		selvalue, ok := value.X.(*ast.SelectorExpr)
+		if !ok {
+			continue
+		}
+		if reflect.DeepEqual(types.ObjectOf(selvalue.Sel), Obj) {
+			flag = true
 		}
 	}
-
-	return false
+	return flag
 }
 
 func getCommentMap(pass *analysis.Pass) map[string]string {

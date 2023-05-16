@@ -24,3 +24,7 @@ func CreateNewUser(w http.ResponseWriter, r *http.Request) {
 func Test_CreateUser(t *testing.T) {
 
 }
+
+func User(w http.ResponseWriter) {
+
+}
