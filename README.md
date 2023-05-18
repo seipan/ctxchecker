@@ -38,7 +38,7 @@ analysistest.go:454: a/a.go:13:8: unexpected diagnostic: no ctx
 go install github.com/seipan/ctxchecker/cmd/ctxchecker
 ```
 
-## Use
+## Usage
 ```
 go vet -vettool=`which ctxchecker` pkgname
 ```
